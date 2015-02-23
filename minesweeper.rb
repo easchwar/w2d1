@@ -61,13 +61,16 @@ class Board
     (x - 1..x + 1).each do |x_pos|
       (y - 1..y + 1).each do |y_pos|
         next if [x_pos,y_pos] == pos
-        if x_pos >= 0 && x_pos < @size &&
-           y_pos >= 0 && y_pos < @size
+        if on_board?(x_pos, y_pos)
           neighbors << @tile_grid[x_pos][y_pos]
         end
       end
     end
     neighbors
+  end
+
+  def on_board?(x,y)
+    x >= 0 && x < @size && y >= 0 && y < @size
   end
 
   def reveal(tile)
@@ -77,8 +80,7 @@ class Board
     return false if tile.bombed
     if tile.neighbor_bomb_count == 0
       tile.neighbors.each do |neighbor|
-        next if @visited_tiles.include?(neighbor)
-        reveal(neighbor)
+        reveal(neighbor) unless @visited_tiles.include?(neighbor)
       end
     end
     true
