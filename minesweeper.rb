@@ -1,3 +1,5 @@
+require 'yaml'
+
 class Tile
   attr_accessor :flagged, :bombed, :neighbors, :revealed
 
@@ -22,24 +24,34 @@ class Tile
 end
 
 class Board
-  def initialize(size=9)
+  def initialize(size = 9, bombs = 12)
     @size = size
     @tile_grid = Array.new(size) { Array.new(size) { Tile.new } }
     @visited_tiles = []
-    @num_bombs = 0
+    @num_bombs = bombs
     fill_board
+    place_bombs
   end
 
   def fill_board
-    nums = (0..10).to_a
     @size.times do |x|
       @size.times do |y|
         @tile_grid[x][y].neighbors = possible_neighbors([x, y])
-        if nums.sample == 5
-          @num_bombs += 1
-          @tile_grid[x][y].bombed = true
-        end
       end
+    end
+  end
+
+  def place_bombs
+    indices = []
+    @size.times do |i|
+      @size.times do |j|
+        indices << [i, j]
+      end
+    end
+    bombs = indices.sample(@num_bombs)
+
+    bombs.each do |tile|
+      @tile_grid[tile[0]][tile[1]].bombed = true
     end
   end
 
@@ -123,7 +135,13 @@ class Board
 end
 
 class Game
+  def self.load(filename)
+    yml_game = File.read(filename)
+    YAML::load(yml_game)
+  end
+
   def initialize(size = 9)
+    @start_time = Time.now
     @board = Board.new(size)
   end
 
@@ -139,9 +157,15 @@ class Game
     end
     @board.display
     if @board.won?
-      puts "You win!"
+      puts "You won in #{Time.now - @start_time} seconds!"
     else
       puts "You Stink!"
+    end
+  end
+
+  def save(filename)
+    File.open(filename, "w") do |f|
+      f.puts self.to_yaml
     end
   end
 
