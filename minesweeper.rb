@@ -16,7 +16,7 @@ class Tile
         neighbor.reveal
       end
     end
-    return true
+    true
   end
 
   def neighbor_bomb_count
