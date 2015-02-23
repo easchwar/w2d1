@@ -6,20 +6,10 @@ class Tile
     @flagged = false
     @revealed = false
     @neighbors = []
-    @visited_neighbors = []
   end
 
   def reveal
-    return false if @bombed
     @revealed = true
-    if neighbor_bomb_count == 0
-      @neighbors.each do |neighbor|
-        next if @visited_neighbors.include?(neighbor)
-        @visited_neighbors << neighbor
-        neighbor.reveal
-      end
-    end
-    true
   end
 
   def neighbor_bomb_count
@@ -35,6 +25,8 @@ class Board
   def initialize(size=9)
     @size = size
     @tile_grid = Array.new(size) { Array.new(size) { Tile.new } }
+    @visited_tiles = []
+    @num_bombs = 0
     fill_board
   end
 
@@ -43,7 +35,10 @@ class Board
     @size.times do |x|
       @size.times do |y|
         @tile_grid[x][y].neighbors = possible_neighbors([x, y])
-        @tile_grid[x][y].bombed = true if nums.sample == 15
+        if nums.sample == 5
+          @num_bombs += 1
+          @tile_grid[x][y].bombed = true
+        end
       end
     end
   end
@@ -63,17 +58,39 @@ class Board
     neighbors
   end
 
-  def reveal(x,y)
-    @tile_grid[x][y].reveal
+  def reveal(tile)
+    return false if tile.flagged
+    tile.reveal
+    @visited_tiles << tile
+    return false if tile.bombed
+    if tile.neighbor_bomb_count == 0
+      tile.neighbors.each do |neighbor|
+        next if @visited_tiles.include?(neighbor)
+        reveal(neighbor)
+      end
+    end
+    true
+  end
+
+  def flag(tile)
+    tile.flagged = tile.flagged ? false : true
+  end
+
+  def tile_from_pos(pos)
+    x, y = pos
+    @tile_grid[x][y]
   end
 
   def won?
+    @size ** 2 - @visited_tiles.length == @num_bombs && !loss?
   end
 
   def loss?
+    @visited_tiles.any?{|tile| tile.bombed}
   end
 
   def over?
+    won? || loss?
   end
 
   def render
@@ -82,7 +99,13 @@ class Board
       @size.times do |y|
         current_tile = @tile_grid[x][y]
         if !current_tile.revealed
-          output += "*"
+          if current_tile.flagged
+            output += "F"
+          else
+            output += "*"
+          end
+        elsif current_tile.bombed
+          output += "!"
         elsif current_tile.neighbor_bomb_count == 0
           output += "_"
         else
@@ -100,24 +123,41 @@ class Board
 end
 
 class Game
-  def initialize
-    @board = Board.new
+  def initialize(size = 9)
+    @board = Board.new(size)
   end
 
   def play_game
     until @board.over?
       @board.display
-      make_move(user_input)
+      f, x, y = user_input
+      if f.upcase == "F"
+        flag([x, y])
+      else
+        make_move([x, y])
+      end
+    end
+    @board.display
+    if @board.won?
+      puts "You win!"
+    else
+      puts "You Stink!"
     end
   end
 
   def user_input
     puts "Enter your move: "
-    gets.chomp.split(' ').map(&:to_i)
+    m, x, y = gets.chomp.split(' ')
+    [m, x.to_i, y.to_i]
   end
 
-  def make_move(move)
-    @board.reveal(move[0],move[1])
+  def flag(move_pos)
+    tile = @board.tile_from_pos(move_pos)
+    @board.flag(tile)
   end
 
+  def make_move(move_pos)
+    tile = @board.tile_from_pos(move_pos)
+    @board.reveal(tile)
+  end
 end
