@@ -6,6 +6,7 @@ class Tile
     @flagged = false
     @revealed = false
     @neighbors = []
+    @visited_neighbors = []
   end
 
   def reveal
@@ -13,6 +14,8 @@ class Tile
     @revealed = true
     if neighbor_bomb_count == 0
       @neighbors.each do |neighbor|
+        next if @visited_neighbors.include?(neighbor)
+        @visited_neighbors << neighbor
         neighbor.reveal
       end
     end
@@ -40,7 +43,7 @@ class Board
     @size.times do |x|
       @size.times do |y|
         @tile_grid[x][y].neighbors = possible_neighbors([x, y])
-        @tile_grid[x][y].bombed = true if nums.sample == 5
+        @tile_grid[x][y].bombed = true if nums.sample == 15
       end
     end
   end
@@ -51,12 +54,13 @@ class Board
     (x - 1..x + 1).each do |x_pos|
       (y - 1..y + 1).each do |y_pos|
         next if [x_pos,y_pos] == pos
-        if x_pos > 0 && x_pos < @size &&
-           y_pos > 0 && y_pos < @size
+        if x_pos >= 0 && x_pos < @size &&
+           y_pos >= 0 && y_pos < @size
           neighbors << @tile_grid[x_pos][y_pos]
         end
       end
     end
+    neighbors
   end
 
   def reveal(x,y)
@@ -79,14 +83,20 @@ class Board
         current_tile = @tile_grid[x][y]
         if !current_tile.revealed
           output += "*"
-        elsif current
+        elsif current_tile.neighbor_bomb_count == 0
+          output += "_"
+        else
+          output += "#{current_tile.neighbor_bomb_count}"
+        end
+      end
+      output += "\n"
+    end
+    output
   end
 
   def display
     puts render
   end
-
-
 end
 
 class Game
